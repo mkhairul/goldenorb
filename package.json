@@ -23,9 +23,11 @@
     "dotenv": "^6.2.0",
     "express": "^4.17.1",
     "helmet": "^3.15.0",
+    "minimist": "^1.2.0",
     "morgan": "^1.9.1",
     "node-fetch": "^2.6.0",
-    "puppeteer": "^1.18.1"
+    "puppeteer": "^1.18.1",
+    "sqlite3": "^4.0.9"
   },
   "devDependencies": {
     "eslint": "^5.12.0",
