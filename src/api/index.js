@@ -1,8 +1,7 @@
 const express = require('express');
-
 const emojis = require('./emojis');
-
 const igscraper = require('../../index')
+const check_db = require('../check_db')
 
 const router = express.Router();
 
@@ -16,17 +15,15 @@ router.use('/emojis', emojis);
 
 router.get('/iginfo', (req, res) => {
   
-
-  db.serialize(function(){
-    db.run('CREATE TABLE IF NOT EXISTS sites (sitename TEXT, ttl TEXT, cached_filename TEXT)')
-
-    var stmt = db.prepare("SELECT * FROM sites WHERE sitename = ?");
+  check_db()
+  .then((row) => {
     
+    res.json({'message':row})
   })
-
-  // Check the DB if there exists a cached page
-  // If there is, check the TTL of the entry
-  // If its more than 1 hour, rescrape the page
+  .catch((msg) => {
+    res.json({'message':msg})
+  })
+  
 
   //res.json(igscraper());
   /*
