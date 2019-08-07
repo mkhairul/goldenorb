@@ -11,7 +11,7 @@ router.get('/', (req, res) => {
   });
 });
 
-router.use('/emojis', emojis);
+//router.use('/emojis', emojis);
 
 router.get('/iginfo', (req, res) => {
   
@@ -23,14 +23,6 @@ router.get('/iginfo', (req, res) => {
   .catch((msg) => {
     res.json({'message':msg})
   })
-  
-
-  //res.json(igscraper());
-  /*
-  igscraper().then(function(data){
-    res.json(data);
-  })
-  */
 });
 
 module.exports = router;
