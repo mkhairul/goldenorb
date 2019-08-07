@@ -59,7 +59,7 @@ class Scrape {
         self.siteExists().then((exists) => {
           if(exists) { 
             // Check if the record is expired
-            if(self.expired() === false)
+            if(self.isExpired() === false)
             {
               // Retrieve cached site data
             } else {
@@ -117,15 +117,20 @@ class Scrape {
       console.log('Listening for messages..');
 
       const pubsub = new PubSub(self.projectid);
-      const subscription = pubsub.subscription(subscriptionName);
+      const subscription = pubsub.subscription(subscriptionName, { flowControl: 
+        { 
+          maxMessages: 1,
+          allowExcessMessages: false
+        } 
+      });
 
       const messageHandler = message => {
         var msg_json = JSON.parse(message.data);
         console.log('Start scraping:', msg_json.sitename);
         self.setSiteName(msg_json.sitename).startScraping().then(function(){
           console.log('Scrape completed:', self.sitename)
+          message.ack();
         })
-        message.ack();
       }
 
       subscription.on(`message`, messageHandler);
