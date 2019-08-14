@@ -59,12 +59,29 @@ class Scrape {
         self.siteExists().then((exists) => {
           if(exists) { 
             // Check if the record is expired
-            if(self.isExpired() === false)
-            {
-              // Retrieve cached site data
-            } else {
-
-            }
+            self.isExpired().then(function(expired){
+              if(expired === false)
+              {
+                // Retrieve cached site data
+                fs.readFile('./cached/' + self.site.filename + '.json', function(err, data){
+                  if (err) throw err;
+                  var site_data = JSON.parse(data);
+                  resolve(site_data);
+                })
+              } else {
+                var expirydate = moment().add(2, 'hours').toDate();
+                self.site.expiry = expirydate;
+                self.site.status = 0;
+                self.site.save().then(function(){
+                  var message = {
+                    sitename: self.site.sitename,
+                  };
+                  self._publishMessage(JSON.stringify(message)).then(() => {
+                    resolve(self.site.status)
+                  });
+                })
+              }
+            })
           } else {
             // Save Data in DB
             // Generate Message
@@ -159,9 +176,13 @@ class Scrape {
           var filename = (result.length > 0) ? result[0].cached_filename:filenamify(self.sitename, {replacement:'_'})
 
           self._scrapeSite().then((data) => {
-            // Create/update file, save data to file
-            fs.writeFileSync('./cached/' + filename + '.json', JSON.stringify(data));
-            resolve(true)
+            var site_row = result[0];
+            site_row.status = 1;
+            site.row.save().then(function(){
+              // Create/update file, save data to file
+              fs.writeFileSync('./cached/' + filename + '.json', JSON.stringify(data));
+              resolve(true)
+            })
           })
         })
       })
@@ -227,7 +248,27 @@ class Scrape {
 
     isExpired() {
       var self = this;
-
+      return new Promise((resolve, reject) => { 
+        self.sites.findAll({
+          where: {
+            sitename: self.sitename
+          }
+        }).then(function(result){
+          self.site = result[0];
+          var expired = moment(site.expired);
+          var current = moment().utc();
+          var diff = expired.diff(current, 'minutes');
+          if(diff > 0)
+          {
+            // not expired
+            resolve(false);
+          }
+          else
+          {
+            resolve(true);
+          }
+        })
+      })
     }
 
     siteExists() {
