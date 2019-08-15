@@ -18,3 +18,19 @@ For parallel testing of publishing messages and listening for messages.
 `sudo apt-get install parallel`
 
 `seq 1 3 | parallel -j 3 node test_publisher.js`
+
+
+Need to run the application and listener
+
+Application
+
+`node ./src/index.js`
+
+Listener
+
+`node ./src/sublistener.js`
+
+
+Requesting iginfo
+
+`http(s)://localhost:9527/api/v1/tv3malaysia`

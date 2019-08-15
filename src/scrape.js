@@ -58,14 +58,17 @@ class Scrape {
       return new Promise((resolve, reject) => {
         self.siteExists().then((exists) => {
           if(exists) { 
+            console.log('record exists');
             // Check if the record is expired
             self.isExpired().then(function(expired){
               if(expired === false)
               {
                 // Retrieve cached site data
-                fs.readFile('./cached/' + self.site.filename + '.json', function(err, data){
+                fs.readFile('./cached/' + self.site.cached_filename, function(err, data){
+                  console.log(process.cwd())
                   if (err) throw err;
                   var site_data = JSON.parse(data);
+                  site_data.status = 1;
                   resolve(site_data);
                 })
               } else {
@@ -76,6 +79,7 @@ class Scrape {
                   var message = {
                     sitename: self.site.sitename,
                   };
+                  console.log(message);
                   self._publishMessage(JSON.stringify(message)).then(() => {
                     resolve(self.site.status)
                   });
@@ -159,6 +163,7 @@ class Scrape {
       //await pubsub.createTopic(self.sitename);
 
       const dataBuffer = Buffer.from(msg);
+      console.log(self.pubsub);
       const messageId = await pubsub.topic(self.pubsub.topic).publish(dataBuffer);
       console.log(`Message ${messageId} published.`);
     }
@@ -178,9 +183,9 @@ class Scrape {
           self._scrapeSite().then((data) => {
             var site_row = result[0];
             site_row.status = 1;
-            site.row.save().then(function(){
+            site_row.save().then(function(){
               // Create/update file, save data to file
-              fs.writeFileSync('./cached/' + filename + '.json', JSON.stringify(data));
+              fs.writeFileSync('./cached/' + filename, JSON.stringify(data));
               resolve(true)
             })
           })
@@ -188,7 +193,7 @@ class Scrape {
       })
     }
 
-    _scrapeSite() {
+    async _scrapeSite() {
       var self = this;
 
       async function getPostDetails(postid){
@@ -197,9 +202,68 @@ class Scrape {
         return json_data;
       }
 
+      return new Promise(async(resolve, reject) => {
+
+        const browser = await puppeteer.launch({
+          headless: true,
+          args: ['--no-sandbox', '--disable-setuid-sandbox']
+        });
+        try{ 
+          const browser_page = await browser.newPage();
+          await browser_page.goto(self.sitename);
+          const html = await browser_page.content();
+    
+          const $ = cheerio.load(html);
+          const page = {}
+    
+          page.logo = {
+              'img': $('main > div > header > div img').first().attr('src'),
+              'alt': $('main > div > header > div img').first().attr('alt'),
+          }
+          page.title = $('section > div:first-child h1').first().text();
+          page.verified = $('section > div:first-child span').first().text();
+    
+          const info_list = ['posts', 'followers', 'following']
+          page.info = {};
+          $('section > ul li').each(function(index){
+              page.info[info_list[index]] = $('a > span', this).first().text()
+          })
+    
+          page.description = $('section > :nth-child(3)').first().html();
+    
+          page.posts = [];
+          let promises = [];
+          $('main article > div:first-child > div > div').each(function(){
+              $('> div', this).each(function(){
+                  let post_url = $('a', this).first().attr('href');
+                  let post_data = getPostDetails(post_url)
+                  promises.push(post_data);
+              })
+          })
+    
+          Promise.all(promises).then(async(values) => {
+            values.forEach(function(item){
+                page.posts.push(item)
+            })
+            await browser.close();
+            resolve(page)
+          })
+        } catch (error) {
+          console.log(error);
+          await browser.close();
+        } finally {
+          await browser.close();
+        }
+      });
+
+
+      /*
       return new Promise((resolve, reject) => {
         puppeteer
-          .launch()
+          .launch({
+            headless: true,
+            args: ['--no-sandbox', '--disable-setuid-sandbox']
+          })
           .then(browser => browser.newPage())
           .then(page => {
             return page.goto(self.sitename).then(function(){
@@ -244,6 +308,7 @@ class Scrape {
           })
           .catch(console.error)
       })
+      */
     }
 
     isExpired() {
@@ -255,7 +320,7 @@ class Scrape {
           }
         }).then(function(result){
           self.site = result[0];
-          var expired = moment(site.expired);
+          var expired = moment(self.site.expired);
           var current = moment().utc();
           var diff = expired.diff(current, 'minutes');
           if(diff > 0)
@@ -287,7 +352,7 @@ class Scrape {
 
     setSiteName(str) {
       this.sitename = str;
-      this.pubsub.topic = str;
+      //this.pubsub.topic = str;
       return this;
     }
 
