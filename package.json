@@ -30,7 +30,7 @@
     "morgan": "^1.9.1",
     "node-fetch": "^2.6.0",
     "puppeteer": "^1.18.1",
-    "sequelize": "^5.10.2",
+    "sequelize": "^5.15.1",
     "sqlite3": "^4.0.9"
   },
   "devDependencies": {
